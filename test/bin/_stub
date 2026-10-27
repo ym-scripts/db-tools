@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Fake pg_dump/pg_restore/psql/mysqldump/mysql/aws for tests.
+# Logs "<tool> <args> | <PG env>" (plus the MySQL option file) to $STUB_LOG.
+# FAIL_<TOOL>=1 makes a tool fail.
+tool=$(basename "$0")
+if [ "${1:-}" = --version ]; then
+    case "$tool" in
+        mysql*) echo "$tool  Ver 8.4.3 for Linux on x86_64 (MySQL Community Server - GPL)" ;;
+        aws) echo "aws-cli/2.17.0" ;;
+        *) echo "$tool (PostgreSQL) 17.2" ;;
+    esac
+    exit 0
+fi
+echo "$tool $* | user=${PGUSER:-} pass=${PGPASSWORD:-} host=${PGHOST:-} port=${PGPORT:-} db=${PGDATABASE:-} ssl=${PGSSLMODE:-}" >> "$STUB_LOG"
+case "${1:-}" in --defaults-extra-file=*) echo "cnf: $(tr '\n' ' ' < "${1#*=}")" >> "$STUB_LOG" ;; esac
+var="FAIL_$(echo "$tool" | tr 'a-z-' 'A-Z_')"
+if [ "${!var:-}" = 1 ]; then echo "$tool: simulated failure" >&2; exit 1; fi
+case "$tool" in
+    pg_dump)
+        out=""; while [ $# -gt 0 ]; do [ "$1" = -f ] && out="$2"; shift; done
+        if [ -n "$out" ]; then echo "PGDMP fake" > "$out"; else echo "-- fake sql"; fi ;;
+    mysqldump) printf -- '-- fake sql\n-- Dump completed on 2026-10-27\n' ;;
+    psql)
+        case "$*" in
+            *server_version_num*) printf '170002\t17.2\tUTF8\ten_US.utf8\t8192\t3\n' ;;
+            *) cat >/dev/null ;;
+        esac ;;
+    mysql)
+        case "$*" in
+            *"select version()"*) printf '8.4.3\tutf8mb4\tutf8mb4_0900_ai_ci\t16384\t2\n' ;;
+            *) cat >/dev/null ;;
+        esac ;;
+    aws)
+        while [ "${1:-}" != s3 ]; do shift; done; shift
+        sub="$1"; shift
+        args=(); for a in "$@"; do case "$a" in --*) ;; *) args+=("$a") ;; esac; done
+        loc() { echo "$FAKE_S3/${1#s3://}"; }
+        case "$sub" in
+            cp) src="${args[0]}" dst="${args[1]}"
+                case "$src" in s3://*) src=$(loc "$src") ;; esac
+                case "$dst" in s3://*) dst=$(loc "$dst"); mkdir -p "$(dirname "$dst")" ;; esac
+                [ -e "$src" ] || { echo "fatal error: not found" >&2; exit 1; }
+                cp "$src" "$dst" ;;
+            ls) p=$(loc "${args[0]}"); d=$(dirname "$p"); b=$(basename "$p")
+                [ "${args[0]%/}" != "${args[0]}" ] && { d="${p%/}"; b=""; }
+                for f in "$d/$b"*; do [ -f "$f" ] && echo "2026-10-27 00:00:00 10 $(basename "$f")"; done ;;
+            rm) rm -f -- "$(loc "${args[0]}")" ;;
+        esac ;;
+esac
+exit 0

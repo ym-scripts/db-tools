@@ -1,0 +1,46 @@
+{
+  "name": "db-tools",
+  "version": "0.1.0",
+  "description": "Back up, restore, migrate and inspect PostgreSQL and MySQL/MariaDB databases from one CLI",
+  "type": "module",
+  "bin": {
+    "db-tools": "bin/db-tools.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check bin/db-tools.mjs && for f in $(find src -name '*.mjs'); do node --check $f || exit 1; done"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "backup",
+    "restore",
+    "migration",
+    "pg_dump",
+    "mysqldump",
+    "s3",
+    "r2",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ym-scripts/db-tools.git"
+  },
+  "homepage": "https://github.com/ym-scripts/db-tools#readme",
+  "bugs": "https://github.com/ym-scripts/db-tools/issues",
+  "author": {
+    "name": "Aghogho Meyoron",
+    "email": "youngmayor.dev@gmail.com",
+    "url": "https://youngmayor.mlabs.ng"
+  },
+  "license": "MIT"
+}
